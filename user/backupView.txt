@@ -1,0 +1,821 @@
+import os
+import django
+import pandas as pd
+from django.shortcuts import get_object_or_404, redirect, render
+from django.core.paginator import Paginator
+from django.contrib import messages
+from django.contrib.auth import authenticate, login
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+from user.forms import qtyForm, usersearchForm
+from user.models import Cart, buyProduct, popoularItemByView
+from viewer.models import create_user
+from manageProducts.models import (
+    BaseColour, MasterCategory, Products, SubCategory, Season, ArticleType, Gender
+)
+
+from user import models
+
+# Set the base directory of your project
+# D:\bca\6th sem files\project ii\AA\online_cloth_recommendation_system_4_77
+BASE_DIR = "D:\\bca\\6th sem files\\project ii\\online_cloth_recommendation_system_4_77"
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'online_cloth_recommendation_system_4_77.settings')
+
+# Setup Django
+django.setup()
+
+# Paths and filenames
+IMAGE_FOLDER_PATH = os.path.join(BASE_DIR, "static", "images")
+STYLES_CSV_PATH = os.path.join(BASE_DIR, "static", "styles.csv")
+
+
+# ========================= Helper Functions ========================= #
+def load_data_from_db():
+    """Load data from the database (Currently uses CSV)."""
+    products = Products.objects.all().values()
+    return pd.DataFrame(list(products))#pd.read_csv(STYLES_CSV_PATH)
+
+
+def load_data( image_folder_path):
+    df1 = load_data_from_db()
+    image_files = os.listdir(image_folder_path)
+    image_files.sort()
+    image_ids = [int(filename.split(".")[0]) for filename in image_files]
+    df_filenames = pd.DataFrame({"filename": image_files, "id": image_ids})
+    return df1, df_filenames
+
+
+def merge_and_clean_data(df1, df_filenames):
+    """Merge datasets, clean the data, and filter for clothing-related items."""
+    clothing_subcategories = [
+        'Topwear', 'Bottomwear', 'Innerwear', 'Dress', 'Apparel Set',
+        'Loungewear and Nightwear', 'Saree', 'Kurtas', 'Kurta Sets',
+        'Jumpsuit', 'Leggings', 'Trousers', 'Sweaters', 'Sweatshirts',
+        'Tunics', 'Nightdress', 'Shirts', 'Jeans', 'Tshirts', 'Track Pants',
+        'Shorts', 'Skirts', 'Capris', 'Camisoles', 'Blazers', 'Vest', 'Salwar', 'Churidar'
+    ]
+
+    merged_data = pd.merge(df1, df_filenames,left_on='product_id', right_on="id", how="inner")
+    cleaned_data = merged_data.dropna(subset=["baseColour_id", "season_id", "usage", "productDisplayName", "filename"])
+    refined_data = cleaned_data.drop(columns=["Extra1", "Extra2"], errors='ignore')
+
+    return refined_data[
+        (refined_data['masterCategory_id'] == 'Apparel') & (refined_data['subCategory_id'].isin(clothing_subcategories))
+    ]
+
+
+def create_universal_tag(refined_data):
+    universal_tag = refined_data[
+        ["gender_id", "masterCategory_id", "subCategory_id", "articleType_id", "season_id", "baseColour_id","year", "usage", "productDisplayName"]
+    ]
+    universal_tag["year"] = universal_tag["year"].astype(str)
+    universal_tag["allCategory"] = universal_tag.apply(lambda row: ' '.join(row.values.astype(str)), axis=1)
+    return universal_tag[["allCategory"]]
+
+
+def prepare_dataset(refined_data, universal_tag):
+    new_refined_data = refined_data[["id", "productDisplayName", "filename"]]
+    new_refined_data["allCategory"] = universal_tag["allCategory"]
+    return new_refined_data
+
+
+def find_similar_items(keyword, dataset, vectorizer, similarity_matrix):
+    keyword_vector = vectorizer.transform([keyword]).toarray()
+    keyword_similarity = cosine_similarity(keyword_vector, similarity_matrix).flatten()
+    similar_indices = keyword_similarity.argsort()[::-1][:70]
+    similar_items = dataset.iloc[similar_indices].copy()
+    similar_items['similarity'] = keyword_similarity[similar_indices]
+    return similar_items[:15]
+
+
+def find_similar_items_for_item(keyword, dataset, vectorizer, similarity_matrix,nth):
+    keyword_vector = vectorizer.transform([keyword]).toarray()
+    keyword_similarity = cosine_similarity(keyword_vector, similarity_matrix).flatten()
+    similar_indices = keyword_similarity.argsort()[::-1][:70]
+    similar_items = dataset.iloc[similar_indices].copy()
+    similar_items['similarity'] = keyword_similarity[similar_indices]
+    return similar_items[:nth]
+
+
+def sideBar():
+    sub_categories = SubCategory.objects.all()
+    article_types = ArticleType.objects.all()
+    base_colours = BaseColour.objects.all()
+    seasons = Season.objects.all()
+    genders = Gender.objects.all()
+    sideBarContext = {
+        'sub_categories': sub_categories,
+        'article_types': article_types,
+        'base_colours': base_colours,
+        'seasons': seasons,
+        'genders': genders,
+    }
+    return sideBarContext
+
+
+# ========================= Views ========================= #
+@login_required
+def userHomepage(request):
+    userID = request.session.get('user_id', 'Guest')
+    userName = request.session.get('username')
+    images = get_slider_images(5)  # Extract images from slider_view response
+    items = get_items(5,"")
+    sideBarData = sideBar()
+    popular_items = popoularItemByView.objects.order_by('counter')[:15]  # Adjust the number as needed
+    content ={'popular_items': popular_items}
+    return render(request, 'userHomepage.html',{'userSearchForm':usersearchForm,'userID':userID,'username':userName,'images': images,'items': items,'sideBar':sideBarData,"content": content})
+
+
+def get_slider_images(nth):
+    """Helper function to retrieve images for the slider."""
+    image_files = os.listdir(IMAGE_FOLDER_PATH)
+    image_files.sort()  # Ensure consistent order
+    
+    # Optionally filter only image files
+    allowed_extensions = ['jpg', 'jpeg', 'png', 'gif']
+    images = [image for image in image_files if image.split('.')[-1].lower() in allowed_extensions]
+
+    return images[:nth]
+
+
+# def get_items(nth, search):
+#     # Load the data from CSV and images folder
+#     df1, df_filenames = load_data(IMAGE_FOLDER_PATH)
+#     refined_data = merge_and_clean_data(df1, df_filenames)
+    
+#     # Create the universal tag for vectorization
+#     universal_tag = create_universal_tag(refined_data)
+#     new_refined_data = prepare_dataset(refined_data, universal_tag)
+
+#     # Apply search query (if provided)
+#     keyword = search if search else ""
+
+#     # Vectorize the tags and find similar items
+#     cv = CountVectorizer(max_features=5000, stop_words="english")
+#     vector = cv.fit_transform(new_refined_data["allCategory"]).toarray()
+
+#     similar_items = find_similar_items(keyword, new_refined_data, cv, vector)
+    
+#     # Limit the number of items to the value of 'nth'
+#     limited_items = similar_items.head(nth).to_dict(orient="records")  # Convert to a list of dictionaries
+#     print(f"the number of items is {len(limited_items)}")  # Prints the count of items
+ 
+#     return limited_items
+
+def get_items(nth, search):
+    # Load the data from CSV and images folder
+    df1, df_filenames = load_data(IMAGE_FOLDER_PATH)
+    refined_data = merge_and_clean_data(df1, df_filenames)
+    
+    # Create the universal tag for vectorization
+    universal_tag = create_universal_tag(refined_data)
+    new_refined_data = prepare_dataset(refined_data, universal_tag)
+
+    # Apply search query (if provided)
+    keyword = search if search else ""
+
+    # Vectorize the tags and find similar items
+    cv = CountVectorizer(max_features=5000, stop_words="english")
+    vector = cv.fit_transform(new_refined_data["allCategory"]).toarray()
+
+    similar_items = find_similar_items_for_item(keyword, new_refined_data, cv, vector,nth)
+    
+    # Debugging - check how many items were found before limiting
+    print(f"Total similar items found: {len(similar_items)}")
+
+    # Limit the number of items to the value of 'nth'
+    limited_items = similar_items.head(nth).to_dict(orient="records")  # Convert to a list of dictionaries
+    
+    # Debugging - check the final number of limited items
+    print(f"Number of items after limiting to {nth}: {len(limited_items)}")
+    
+    return limited_items
+
+
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+def userItems(request):
+    items = get_items(55, "t-shirts")
+    print(items)
+    print(len(items))
+    paginator = Paginator(items, 10)  # Show 10 items per page.
+    page = request.GET.get('page')
+    try:
+        paged_items = paginator.page(page)
+    except PageNotAnInteger:
+        # If page is not an integer, deliver first page.
+        paged_items = paginator.page(1)
+    except EmptyPage:
+        # If page is out of range (e.g. 9999), deliver last page of results.
+        paged_items = paginator.page(paginator.num_pages)
+    
+    sideData = sideBar()
+    return render(request, 'userItems.html', {'userSearchForm':usersearchForm,"items": paged_items, "sideBar": sideData})
+
+def userItemDetails(request, item_id):
+        # Call the get_items function to get the items
+    df1, df_filenames = load_data( IMAGE_FOLDER_PATH)
+    refined_data = merge_and_clean_data(df1, df_filenames)
+
+    item = refined_data.loc[refined_data["product_id"] == item_id].iloc[0]
+    individualItemsTag = create_universal_tag(pd.DataFrame([item])).iloc[0]
+
+    universal_tag = create_universal_tag(refined_data)
+    new_refined_data = prepare_dataset(refined_data, universal_tag)
+
+    cv = CountVectorizer(max_features=5000, stop_words="english")
+    vector = cv.fit_transform(new_refined_data["allCategory"])
+
+    item_allCategory = individualItemsTag["allCategory"]
+    similar_items = find_similar_items(item_allCategory, new_refined_data, cv, vector)
+    sideData = sideBar()
+    context = {"item": item.to_dict(), "individualItemsTag": item_allCategory, "similar_items": similar_items.to_dict(orient="records")}
+
+    # Render the template with the content
+    return render(request, 'userItemDetail.html', {'userSearchForm':usersearchForm,"content": context,"sideBar":sideData})
+
+
+
+# def userOrder(request):
+#     return render(request, 'userOrder.html')
+
+# def userHistory(request):
+#     return render(request, 'userHistory.html')
+
+# def userDashboard(request):
+#     return render(request, 'userDashboard.html')
+
+
+
+
+
+CATEGORY_SIZE=50
+# def user_products_by_subcategory(request, sub_category_name):
+#     subcategory = get_object_or_404(SubCategory, sub_category_name=sub_category_name)
+#     products = Products.objects.filter(subCategory=subcategory)[:CATEGORY_SIZE]
+#     sideData = sideBar()
+#     print(products)
+#     content = {'products': products, 'sideBar': sideData}
+#     return render(request, 'user_product_list.html', {'content': content,"sideBar":sideData})
+
+# def user_products_by_article_type(request, articleType_name):
+#     article_type = get_object_or_404(ArticleType, articleType_name=articleType_name)
+#     products = Products.objects.filter(articleType=article_type)[:CATEGORY_SIZE]
+#     sideData = sideBar()
+#     content = {'products': products, 'sideBar': sideData}
+#     return render(request, 'user_product_list.html', {'content': content,"sideBar":sideData})
+
+# def user_products_by_base_colour(request, baseColour_name):
+#     base_colour = get_object_or_404(BaseColour, baseColour_name=baseColour_name)
+#     products = Products.objects.filter(baseColour=base_colour)[:CATEGORY_SIZE]
+#     sideData = sideBar()
+#     content = {'products': products, 'sideBar': sideData}
+#     return render(request, 'user_product_list.html', {'content': content,"sideBar":sideData})
+
+# def user_products_by_season(request, season_name):
+#     season = get_object_or_404(Season, season_name=season_name)
+#     products = Products.objects.filter(season=season)[:CATEGORY_SIZE]
+#     sideData = sideBar()
+#     content = {'products': products, 'sideBar': sideData}
+#     return render(request, 'user_product_list.html', {'content': content, "sideBar": sideData})
+
+
+# def user_products_by_gender(request, gender_name):
+#     gender = get_object_or_404(Gender, gender_name=gender_name)
+#     products = Products.objects.filter(gender=gender)[:CATEGORY_SIZE]
+#     sideData = sideBar()
+#     content = {'products': products, 'sideBar': sideData}
+#     return render(request, 'user_product_list.html', {'content': content,"sideBar":sideData})
+
+def user_products_by_season(request, season_name): 
+    season = get_object_or_404(Season, season_name=season_name)
+    products = Products.objects.filter(season=season)
+    print(products)
+    paginator = Paginator(products, 10  )  # Show CATEGORY_SIZE products per page
+    page = request.GET.get('page')  # Get the page number from the request
+    try:
+        paged_products = paginator.page(page)
+    except PageNotAnInteger:
+        paged_products = paginator.page(1)  # If page is not an integer, show the first page
+    except EmptyPage:
+        paged_products = paginator.page(paginator.num_pages)  # If page is out of range, show last page
+    sideData = sideBar()  # Assuming sideBar() returns sidebar data
+    return render(request, 'user_product_list.html', {'userSearchForm':usersearchForm,'products': paged_products, "sideBar": sideData})
+
+def user_products_by_subcategory(request, sub_category_name):
+    subcategory = get_object_or_404(SubCategory, sub_category_name=sub_category_name)
+    products = Products.objects.filter(subCategory=subcategory)
+    paginator = Paginator(products, 10)  # Show 10 products per page.
+    page = request.GET.get('page')
+    try:
+        paged_products = paginator.page(page)
+    except PageNotAnInteger:
+        paged_products = paginator.page(1)
+    except EmptyPage:
+        paged_products = paginator.page(paginator.num_pages)
+    
+    sideData = sideBar()
+    return render(request, 'user_product_list.html', {'userSearchForm':usersearchForm,'products': paged_products, "sideBar": sideData})
+
+def user_products_by_article_type(request, articleType_name):
+    products = Products.objects.filter(articleType=articleType_name)
+    paginator = Paginator(products, 10)  # Show 10 products per page.
+    page = request.GET.get('page')
+    try:
+        paged_products = paginator.page(page)
+    except PageNotAnInteger:
+        paged_products = paginator.page(1)
+    except EmptyPage:
+        paged_products = paginator.page(paginator.num_pages)
+    
+    sideData = sideBar()
+    return render(request, 'user_product_list.html', {'userSearchForm':usersearchForm,'products': paged_products, "sideBar": sideData})
+
+
+def user_products_by_base_colour(request, baseColour_name):
+    products = Products.objects.filter(baseColour=baseColour_name)
+    paginator = Paginator(products, 10)  # Show 10 products per page.
+    page = request.GET.get('page')
+    try:
+        paged_products = paginator.page(page)
+    except PageNotAnInteger:
+        paged_products = paginator.page(1)
+    except EmptyPage:
+        paged_products = paginator.page(paginator.num_pages)
+    
+    sideData = sideBar()
+    return render(request, 'user_product_list.html', {'userSearchForm':usersearchForm,'products': paged_products, "sideBar": sideData})
+
+def user_products_by_usage(request, usage_name):
+    products = Products.objects.filter(usage=usage_name)
+    paginator = Paginator(products, 10)  # Show 10 products per page.
+    page = request.GET.get('page')
+    try:
+        paged_products = paginator.page(page)
+    except PageNotAnInteger:
+        paged_products = paginator.page(1)
+    except EmptyPage:
+        paged_products = paginator.page(paginator.num_pages)
+    
+    sideData = sideBar()
+    return render(request, 'user_product_list.html', {'userSearchForm':usersearchForm,'products': paged_products, "sideBar": sideData})
+
+def user_products_by_gender(request, gender_name):
+    products = Products.objects.filter(gender=gender_name)
+    paginator = Paginator(products, 10)  # Show 10 products per page.
+    page = request.GET.get('page')
+    try:
+        paged_products = paginator.page(page)
+    except PageNotAnInteger:
+        paged_products = paginator.page(1)
+    except EmptyPage:
+        paged_products = paginator.page(paginator.num_pages)
+    
+    sideData = sideBar()
+    return render(request, 'user_product_list.html', {'userSearchForm':usersearchForm,'products': paged_products, "sideBar": sideData})
+
+
+
+
+#user accounts data
+from django.shortcuts import render, redirect
+from django.core.exceptions import ObjectDoesNotExist
+from viewer.models import create_user
+from user.forms import usersearchForm  # Assuming you have the searchForm from user.forms
+
+# User Account View
+def userAccount(request):
+    sideData = sideBar()
+    if not request.session.get('logged_in', False):
+        return redirect('login')
+
+    username = request.session.get('username')
+    try:
+        user = create_user.objects.get(usernames=username)
+    except create_user.DoesNotExist:
+        user = None
+
+    context = {
+        "username": username,
+        "user": user,   
+        "searchForm": usersearchForm(),
+        "sideBar": sideData
+    }
+    return render(request, 'userAccountPage.html', {'userSearchForm':usersearchForm,"content": context})
+
+# Edit User Account View
+def editUserAccount(request):
+    sideData = sideBar()
+    # if not request.session.get('logged_in', False):
+    #     return redirect('viewerLoginpage')
+
+    username = request.session.get('username')
+    try:
+        user = create_user.objects.get(usernames=username)
+    except create_user.DoesNotExist:
+        return redirect('userAccount')
+
+    context = {
+        "user": user,
+        "sideBar": sideData,
+        
+    }
+    return render(request, 'editUserAccountPage.html', {'userSearchForm':usersearchForm,"content": context})
+
+# Update User Account View
+def updateUserAccount(request):
+    sideData = sideBar()
+    # if not request.session.get('logged_in', False):
+    #     return redirect('viewerLoginpage')
+
+    username = request.session.get('username')
+    user = create_user.objects.get(usernames=username)
+    
+    if request.method == 'POST':
+        DOB = request.POST.get('DOB')
+        address = request.POST.get('address')
+        password = request.POST.get('password')
+
+        user.DOB = DOB
+        user.address = address
+        if password:
+            user.password = password  # In real applications, hash the password
+        user.save()
+
+        return redirect('userAccount')
+    
+    context = {
+        "user": user,
+        "sideBar": sideData,
+        
+    }
+    return render(request, 'editUserAccountPage.html', {'userSearchForm':usersearchForm,"content": context})
+
+
+def add_to_cart(request,product_id):
+    user = get_object_or_404(create_user, usernames=request.session.get('username'))
+    product = get_object_or_404(Products, product_id=product_id)
+    
+    cart_item, created = Cart.objects.get_or_create(user=user, product=product)
+    if not created:
+        cart_item.quantity += 1
+        cart_item.save()
+        messages.add_message(request, messages.INFO,"Item is already in your cart.")
+    else:
+        messages.add_message(request, messages.INFO,"Item added to cart.")
+    
+    return redirect('userItems')
+
+def userCart(request):
+    sideData = sideBar()
+    if not request.session.get('logged_in', False):
+        return redirect('viewerLoginpage')
+
+    user = get_object_or_404(create_user, usernames=request.session.get('username'))
+    cart_items = Cart.objects.filter(user=user)
+
+    context = {
+        "cart_items": cart_items,
+        "sideBar": sideData,
+        'userSearchForm':usersearchForm,
+    }
+    return render(request, 'userCart.html',{'userSearchForm':usersearchForm,"content": context,  "sideBar": sideData})
+
+
+def remove_from_cart(request, product_id):
+    user = get_object_or_404(create_user, usernames=request.session.get('username'))
+    cart_item = get_object_or_404(Cart, user=user, product_id=product_id)
+    cart_item.delete()
+    return redirect('userCart')
+
+
+from django.utils import timezone
+
+# def buy(request, item_id):
+#     product = get_object_or_404(Products, product_id=item_id)
+#     if request.method == 'POST':
+#         form = qtyForm(request.POST)
+#         if form.is_valid():
+#             qty = form.cleaned_data['qty']
+#             username = request.session.get('username')
+            
+#             # Retrieve the user instance from the database
+#             user = get_object_or_404(create_user, usernames=username)
+            
+#             total_amount = product.price * qty  # Assuming there's a price field in Products
+#             if qty > product.quantity:
+#                 throw error
+#             else: 
+#                 product.quantity = product.quantity-qty
+#             # Create a new purchase record
+#             purchase = buyProduct(
+#                 user=user,
+#                 product=product,
+#                 quantity=qty,
+#                 amt=product.price,
+#                 total=total_amount,
+#                 purchase_date=timezone.now(),
+#                 address=user.address,  # Assuming user profile has address field
+#                 contact="user.contact"   # Assuming user profile has contact field
+#             )
+#             purchase.save()
+            
+#             return redirect('purchase_success')  # Redirect to a success page
+#     else:
+#         return render(request, 'buy_product.html',{"product": product,"form": qtyForm()})
+    
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
+from django.contrib import messages
+from .models import Products, create_user, buyProduct
+from .forms import qtyForm
+
+def buy(request, item_id):
+    product = get_object_or_404(Products, product_id=item_id)
+
+    if request.method == 'POST':
+        form = qtyForm(request.POST)
+        if form.is_valid():
+            qty = form.cleaned_data['qty']
+            username = request.session.get('username')
+
+            # Retrieve the user instance from the database
+            user = get_object_or_404(create_user, usernames=username)
+
+            total_amount = product.price * qty  # Assuming 'price' is a field in Products
+            
+            # Check if there is enough stock
+            if qty > product.quantity:
+                messages.error(request, "Not enough stock available.")
+                return render(request, 'buy_product.html', {"product": product, "form": form})
+            else:
+                # Update product stock
+                product.quantity -= qty
+                product.save()
+
+                # Create a new purchase record
+                purchase = buyProduct(
+                    user=user,
+                    product=product,
+                    quantity=qty,
+                    amt=product.price,
+                    total=total_amount,
+                    purchase_date=timezone.now(),
+                    address=user.address,  # Assuming 'address' is a field in user profile
+                     # Assuming 'contact' is a field in user profile
+                )
+                purchase.save()
+
+                return redirect('purchase_success')  # Redirect to a success page
+    else:
+        form = qtyForm()
+
+    return render(request, 'buy_product.html', {'userSearchForm':usersearchForm,"product": product, "form": form})
+
+
+
+def purchase_success(request):
+    return render(request, 'purchase_success.html')
+
+
+def order_history(request):
+    # Retrieve the user from the session
+    username = request.session.get('username')
+    try:
+        user = create_user.objects.get(usernames=username)
+    except create_user.DoesNotExist:
+        return render(request, 'error.html', {'message': 'User not found'})
+
+    # Retrieve the user's order history
+    orders = buyProduct.objects.filter(user=user).order_by('-purchase_date')
+
+    return render(request, 'order_history.html', {'userSearchForm':usersearchForm,'orders': orders})
+
+def error(request, message):
+    return render(request, 'error.html', {'message': message})  
+
+def cancel_order(request, order_id):
+    if not request.session.get('logged_in', False):
+        return redirect('viewerLoginpage')
+
+    
+    
+    order = get_object_or_404(buyProduct, id=order_id, user__usernames=request.session['username'])
+    # product = Products.objects.get(productDisplayName=order.product)
+    print(order.product_id)
+    productID = order.product_id
+
+    # print(order.quantity)
+    if order.status == 'pending':
+        order.status = 'canceled'
+        # to increase the product quantity from Products table based on the id provided as order was canceled from buyProducts
+        product = Products.objects.get(product_id=productID)
+        product.quantity += order.quantity
+        product.save()
+
+        # delete the order from buyProducts table
+        order.delete()
+        messages.success(request, 'Order has been canceled successfully.')
+        order.save()
+        messages.success(request, 'Order has been canceled successfully.')
+    else:
+        messages.error(request, 'Order cannot be canceled.')
+    
+    return redirect('userOrder')
+
+def order(request):
+    username = request.session.get('username')
+    user = create_user.objects.get(usernames=username)
+    orders = buyProduct.objects.filter(user=user).order_by('-purchase_date')
+    return render(request, 'user_order.html',{'userSearchForm':usersearchForm,'orders': orders,'sideBar': sideBar(),})
+
+
+
+
+def logout(request):
+    if request.session.get('logged_in', False):
+        del request.session['logged_in']
+        del request.session['username']
+    return redirect('login')
+
+
+
+
+def fetch_user_purchased_items(user):
+    # Fetch all products purchased by the user
+    purchased_products = buyProduct.objects.filter(user_id=user)
+    return purchased_products
+
+def create_universal_tag_for_product_purchased(product):
+    # Create a universal tag for a single product
+    universal_tag = (
+        f"{product.gender_id} {product.masterCategory_id} "
+        f"{product.subCategory_id} {product.articleType_id} "
+        f"{product.baseColour_id} {product.season_id} "
+        f"{product.year} {product.usage} {product.productDisplayName}"
+    )
+    return universal_tag
+
+from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404, render, redirect
+
+def find_similar_items_by_purchased(keyword, dataset, vectorizer, similarity_matrix):
+    keyword_vector = vectorizer.transform([keyword]).toarray()
+    keyword_similarity = cosine_similarity(keyword_vector, similarity_matrix).flatten()
+    similar_indices = keyword_similarity.argsort()[::-1][:3]
+    similar_items = dataset.iloc[similar_indices].copy()
+    similar_items['similarity'] = keyword_similarity[similar_indices]
+    # print(similar_items.head(5))
+    return similar_items
+
+def find_similar_items_for_purchased_items(request):
+    # Retrieve the logged-in user's username from the session
+    username = request.session.get('username')
+
+    # Ensure the username exists and retrieve the user object
+    if username:
+        user = get_object_or_404(create_user, usernames=username)
+    else:
+        return redirect('login')  # Redirect to login if the user is not logged in
+
+    # Fetch the products purchased by the user
+    purchased_items = buyProduct.objects.filter(user=user)
+
+    # Prepare the dataset for similarity search
+    df1, df_filenames = load_data(IMAGE_FOLDER_PATH)
+    refined_data = merge_and_clean_data(df1, df_filenames)
+    universal_tag = create_universal_tag(refined_data)
+    new_refined_data = prepare_dataset(refined_data, universal_tag)
+
+    # Vectorize the item data
+    cv = CountVectorizer(max_features=5000, stop_words="english")
+    vector = cv.fit_transform(new_refined_data["allCategory"]).toarray()
+
+    # Find similar items for each purchased item
+    similar_items = []
+    for item in purchased_items:
+        # print(item)
+        keyword = item.product.productDisplayName  # Assuming productDisplayName is used for similarity search
+        similar_items += find_similar_items_by_purchased(keyword, new_refined_data, cv, vector).to_dict(orient="records")
+        # print(similar_items)
+    # print(similar_items)
+    paginator = Paginator(similar_items, 9)  # Paginate the similar items
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "qtyForm": qtyForm(),
+        "page_obj": page_obj,
+        "sideBar": sideBar(),
+        
+    }
+
+    return render(request, 'userSimilarItem.html', {"sideBar": sideBar(),'userSearchForm':usersearchForm,'content': context})
+
+
+def popular_items_view(request):
+    # Fetch popular items sorted by counter in descending order
+    popular_items = popoularItemByView.objects.order_by('counter')[:15]  # Adjust the number as needed
+    content ={'popular_items': popular_items}
+    return render(request, 'userPopularItem.html',{"sideBar": sideBar(),'userSearchForm':usersearchForm,"content": content})
+
+
+
+# from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+# def searched_items(request):
+#     # Fetch searched items based on user's search query
+#     query = request.GET.get('search', '')
+    
+#     # Get items based on search query
+#     searched_items = get_items(15, query)  # Get top 15 matching items
+
+#     # Pagination - set how many items per page
+#     paginator = Paginator(searched_items, 10)  # 10 items per page
+#     page = request.GET.get('page')
+    
+#     try:
+#         paged_items = paginator.page(page)
+#     except PageNotAnInteger:
+#         # If page is not an integer, deliver first page.
+#         paged_items = paginator.page(1)
+#     except EmptyPage:
+#         # If page is out of range (e.g. 9999), deliver last page.
+#         paged_items = paginator.page(paginator.num_pages)
+
+#     # Get sidebar data
+#     sideData = sideBar()
+
+#     # Render the template with paged results, search form, and sidebar
+#     return render(request, 'userSearchedItems.html', {
+#         'userSearchForm': usersearchForm(), 
+#         'items': paged_items, 
+#         'sideBar': sideData,
+#         'search_query': query,  # Pass the query for potential use in the template
+#     })
+
+
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+def searched_items(request):
+    # Fetch search query from GET parameters
+    query = request.GET.get('search', '')
+    
+    # Fetch items based on the search query
+    searched_items = get_items(30, query)  # Adjust the limit as needed
+
+    # Setup pagination - 10 items per page
+    paginator = Paginator(searched_items, 10)
+    page = request.GET.get('page')
+    
+    try:
+        paged_items = paginator.page(page)
+    except PageNotAnInteger:
+        paged_items = paginator.page(1)
+    except EmptyPage:
+        paged_items = paginator.page(paginator.num_pages)
+
+    # Get sidebar data
+    sideData = sideBar()
+
+    # Render the template with paged results and sidebar data
+    return render(request, 'userSearchedItems.html', {
+        'userSearchForm': usersearchForm(),
+        'items': paged_items,
+        'sideBar': sideData,
+        'search_query': query,
+    })
+
+
+from .models import buyProduct, Cart
+
+from django.shortcuts import render
+from .models import Cart, buyProduct
+from django.db.models import Sum
+from viewer.models import create_user
+
+def dashboard(request):
+    username = request.session.get('username')
+    user = create_user.objects.get(usernames=username)
+    
+    # Count only orders that are not canceled
+    total_orders = buyProduct.objects.filter(user=user).exclude(status='canceled').count()
+    
+    # Count items in the cart
+    cart_items_count = Cart.objects.filter(user=user).count()
+    
+    # Calculate the total amount spent, excluding canceled orders
+    total_spent = buyProduct.objects.filter(user=user).exclude(status='canceled').aggregate(total=Sum('total'))['total'] or 0
+    
+    # Get the 3 most recent orders, regardless of their status
+    recent_orders = buyProduct.objects.filter(user=user).order_by('-purchase_date')[:3]
+
+    return render(request, 'userDashboard.html', {
+          'userSearchForm': usersearchForm(),
+           'sideBar': sideBar(),
+        'total_orders': total_orders,
+        'cart_items_count': cart_items_count,
+        'total_spent': total_spent,
+        'recent_orders': recent_orders
+    })

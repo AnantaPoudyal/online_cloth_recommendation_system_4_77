@@ -1,0 +1,127 @@
+
+<style>
+    /* Navbar Background and Shadow */
+    .navbar {
+        background: linear-gradient(to right, #007bff, #00c6ff);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        text-transform: capitalize;
+    }
+
+    /* Navbar links styling */
+    .navbar-nav .nav-link {
+        color: #fff !important;
+        font-weight: 500;
+        padding: 10px 15px;
+        transition: color 0.3s ease-in-out, transform 0.3s ease;
+    }
+
+    /* Hover effect for links */
+    .navbar-nav .nav-link:hover {
+        color: #ff8c00 !important;
+        transform: scale(1.05);
+    }
+
+    /* Active link styling */
+    .navbar-nav .nav-link.active {
+        color: #ff8c00 !important;
+        font-weight: 700;
+    }
+
+    /* Navbar brand (logo) */
+    .navbar-brand {
+        color: #fff !important;
+        font-weight: 700;
+        font-size: 1.5rem;
+        transition: color 0.3s ease;
+    }
+
+    .navbar-brand:hover {
+        color: #ff8c00 !important;
+    }
+
+    /* Toggler Button */
+    .navbar-toggler {
+        border-color: #fff;
+    }
+
+    .navbar-toggler-icon {
+        background-color: #fff;
+    }
+
+    /* Form input (search bar) */
+    .navbar .d-flex input {
+        border-radius: 20px;
+        border: 1px solid #ddd;
+        padding: 5px 10px;
+        margin-right: 10px;
+    }
+
+    /* Button styling */
+    .navbar .btn-primary {
+        background-color: #ff8c00;
+        border: none;
+        border-radius: 20px;
+        padding: 8px 15px;
+        font-weight: 600;
+    }
+
+    .navbar .btn-primary:hover {
+        background-color: #ffb74d;
+    }
+    
+    /* Dropdown Menu */
+    .dropdown-menu {
+        background-color: #007bff;
+        border: none;
+        border-radius: 10px;
+    }
+
+    .dropdown-item {
+        color: #fff;
+    }
+
+    .dropdown-item:hover {
+        background-color: #ff8c00;
+    }
+</style>
+<nav class="navbar navbar-expand-lg navbar-light fixed-top  bg-light shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'userHomepage' %}">Clothing Store</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link active" aria-current="page" href="{% url 'userHomepage' %}">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'dashboard' %}">dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'userItems' %}">Items</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'userAccount' %}">Account</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'userCart' %}">Cart</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'userOrder' %}">Order</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'logout' %}">Log Out</a>
+                </li>
+            </ul>
+            <!-- Align Search Form to the right -->
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <form class="d-flex" method="GET" action="{% url 'user_searched_items' %}">
+                        {{ userSearchForm }}
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

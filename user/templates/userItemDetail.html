@@ -1,0 +1,135 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ item.productDisplayName }}</title>
+    <!-- Bootstrap CSS -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    />
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 0px;
+        }
+        .product-details {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .product-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        .product-title {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #343a40;
+        }
+        .product-info p {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        .image-col, .details-col {
+            display: flex;
+            align-items: center;
+        }
+        .details-col {
+            flex-direction: column;
+        }
+        .similar-items {
+            margin-top: 40px;
+        }
+        .similar-item-card {
+            margin-bottom: 20px;
+        }
+        .card-img-top {
+            max-height: 200px;
+            object-fit: cover;
+        }
+        .card-body {
+            padding: 10px;
+        }
+        .card-text {
+            font-size: 0.9rem;
+        }
+        .text-muted {
+            color: #6c757d !important;
+        }
+        .containers{
+            border: 0px solid red;
+            margin-left: 18%;
+            margin-top: 50px;
+            width:80%;
+        }
+    </style>
+</head>
+<body>
+
+    {%include 'userNavbar.html'%}
+    {%include 'userSidebar.html'%}
+    <div class="containers">
+        <div class="row product-details">
+            <!-- Image Column -->
+            <div class="col-md-6 image-col">
+                <img src="{% static 'images/' %}{{ content.item.filename }}" class="product-image" alt="{{ content.item.productDisplayName }}">
+            </div>
+            <!-- Details Column -->
+            <div class="col-md-6 details-col">
+                <h1 class="product-title">{{ content.item.productDisplayName }}</h1>
+                <div class="product-info">
+                    <p><strong>Gender:</strong> {{ content.item.gender_id }}</p>
+                    <p><strong>Category:</strong> {{ content.item.masterCategory_id }} - {{ content.item.subCategory_id }}</p>
+                    <p><strong>Article Type:</strong> {{ content.item.articleType_id }}</p>
+                    <p><strong>Base Colour:</strong> {{ content.item.baseColour_id }}</p>
+                    <p><strong>Season:</strong> {{ content.item.season_id }}</p>
+                    <p><strong>Year:</strong> {{ content.item.year }}</p>
+                    <p><strong>Usage:</strong> {{ content.item.usage }}</p>
+                    <p><strong>price:</strong> {{ content.item.price }}</p>
+                    <p><strong>stock:</strong> {{ content.item.quantity }} available</p>
+                
+                    <a href="{% url 'addToCart' content.item.id %}" class="btn btn-primary add-to-cart" data-product-id="{{ content.item.id }}">Add to Cart</a>
+                    <a href="{% url 'buy' content.item.id %}" class="btn btn-primary add-to-cart" data-product-id="{{ content.item.id }}">Buy</a>
+                    <!-- Add more fields as necessary -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Similar items section -->
+    <div class="containers">
+        <h2 class="mt-5">Similar Items</h2>
+        <div class="row similar-items">
+            {% for similar_item in content.similar_items %}
+
+                <div class="col-md-3 similar-item-card">
+                    <div class="card">
+                        <a href="{% url 'userItemDetails' similar_item.id %}">
+                            <img src="{% static 'images/'|add:similar_item.filename %}" class="card-img-top" alt="{{ similar_item.productDisplayName }}">
+                            <div class="card-body">
+                                <p class="card-text">{{ similar_item.productDisplayName }}</p>
+                                <p class="card-text"><small class="text-muted">Cosine Similarity: {{ similar_item.similarity }}</small></p>
+                            </div>
+                        </a>
+                        <a href="{% url 'addToCart' similar_item.id %}" class="btn btn-primary add-to-cart" data-product-id="{{ similar_item.id }}">Add to Cart</a>
+                    <a href="{% url 'buy' similar_item.id %}" class="btn btn-primary add-to-cart" data-product-id="{{ similar_item.id }}">Buy</a>
+                    
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Successful</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+       .mycontainer {
+            margin-top:  350px;
+            margin: 300px;
+        }
+    </style>
+</head>
+<body>
+    {%include 'userNavbar.html'%}
+    {%include 'userSidebar.html'%}
+    <div class="container mycontainer mt-5">
+        <div class="alert alert-success" role="alert">
+            <h4 class="alert-heading">Purchase Successful!</h4>
+            <p>Thank you for your purchase. Your order has been successfully placed.</p>
+            <hr>
+            <p class="mb-0">You can view your order details <a href="{% url 'userHistory' %}">here</a>.</p>
+        </div>
+        <a href="{% url 'userHomepage' %}" class="btn btn-primary">Go to Home</a>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

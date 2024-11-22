@@ -1,0 +1,137 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Homepage</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Top section for navbar */
+        .navbar {
+            flex: 0 0 auto;
+            background-color: #343a40;
+            color: white;
+        }
+
+        /* Main section, divided into sidebar and content */
+        .main-content {
+            display: flex;
+            flex: 1;
+            margin-top: 20px;
+        }
+
+        /* Sidebar on the left */
+        .sidebar {
+            background-color: #f8f9fa;
+            padding: 15px;
+            position: relative;
+            width: 250px;
+            border-right: 1px solid #ddd;
+        }
+
+        /* Content on the right */
+        .content {
+            flex: 1;
+            padding: 20px;
+            background-color: white;
+            margin: 0 20px 20px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Footer section */
+        .footer {
+            flex: 0 0 auto;
+            background-color: #f1f1f1;
+            text-align: center;
+            padding: 10px;
+            margin-top: auto;
+        }
+
+        /* Centered content inside the content area */
+        #userData {
+            border: 1px solid #ccc;
+            padding: 20px;
+            width: 60%;
+            text-align: center;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Adjust content to take remaining space after navbar and footer */
+        .main-content {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* For responsiveness */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+                margin-top: 0;
+            }
+
+            .sidebar {
+                width: 100%;
+                padding: 10px;
+                border-right: none;
+                margin-bottom: 20px;
+            }
+
+            .content {
+                margin: 0;
+                padding: 15px;
+            }
+
+            #userData {
+                width: 80%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top section for navbar -->
+    <div class="navbar">
+        {% include 'userNavbar.html' %}
+    </div>
+
+    <!-- Middle section: sidebar and main content -->
+    <div class="main-content">
+        <!-- Sidebar on the left -->
+        <div class="sidebar">
+            {% include 'userSidebar.html' %}
+        </div>
+
+        <!-- Main content on the right -->
+        <div class="content">
+            <div id="userData">
+                <p>Welcome, {{ username }}!</p>
+                <p>This is the user homepage.</p>
+            </div>
+
+            <!-- Slider and other content -->
+            {% include 'userSlider.html' %}
+            {% include 'userHomePageItems.html' %}
+            {% include 'userPopularItem.html' %}
+        </div>
+    </div>
+
+    <!-- Bottom section for footer -->
+    <div class="footer">
+        {% include 'userFooter.html' %}
+    </div>
+</body>
+</html>

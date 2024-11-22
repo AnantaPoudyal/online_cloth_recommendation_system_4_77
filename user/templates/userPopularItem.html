@@ -1,0 +1,68 @@
+{% load static %}
+<!-- popular_items.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popular Items</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .container_item{
+            margin:15% 20%;
+        }
+        .card {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .card img {
+            max-height: 300px;
+            object-fit: cover;
+        }
+        .card-body {
+            padding: 1rem;
+        }
+        .card-body a {
+            font-weight: bold;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .card-body a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    {% include 'userNavbar.html' %}
+    {% include 'userSidebar.html' %}
+    <div class="container_item mt-5">
+        <br><br><br>
+
+        <h2 class="text-center mb-4">Popular Items</h2>
+        <div class="row">
+            {% for item in content.popular_items %}
+                <div class="col-md-4">
+                    <div class="card">
+                        <img src="{% static '/' %}{{ item.product.imageName }}" class="card-img-top" alt="{{ item.product.productDisplayName }}">
+                        <div class="card-body">
+                            <a href="{% url 'userItemDetails' item.product.product_id %}">
+                                {{ item.product.productDisplayName }}
+                            </a>
+                            
+                            {% comment %} <p class="card-text mt-2">Popularity: {{ item.counter }}</p> {% endcomment %}
+                        </div>
+                        <a href="{% url 'addToCart' item.product.product_id %}" class="btn btn-primary add-to-cart" data-product-id="{{ item.product.product_id }}">Add to Cart</a>
+                            <a href="{% url 'buy' item.product.product_id %}" class="btn btn-primary add-to-cart" data-product-id="{{ item.product.product_id }}">Buy</a>
+                            
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
