@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <!-- Load Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    {% include 'sidebar.html' %}
+
+    <header class="text-center my-4">
+        <h1>Create a New Account</h1>
+    </header>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <form method="POST" action="">
+                    {% csrf_token %}
+                    <!-- Username Field -->
+                    <div class="form-group">
+                        <label for="id_usernames">Username</label>
+                        {{ form.usernames }}
+                        {% if form.usernames.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.usernames.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Password Field -->
+                    <div class="form-group">
+                        <label for="id_password">Password</label>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.password.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Date of Birth Field -->
+                    <div class="form-group">
+                        <label for="id_DOB">Date of Birth</label>
+                        {{ form.DOB }}
+                        {% if form.DOB.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.DOB.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Address Field -->
+                    <div class="form-group">
+                        <label for="id_address">Address</label>
+                        {{ form.address }}
+                        {% if form.address.errors %}
+                            <div class="alert alert-danger mt-2">{{ form.address.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary btn-block">Register</button>
+                    </div>
+                </form>
+
+                {% if messages %}
+                <div class="container mt-3">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        var messageModal = new bootstrap.Modal(document.getElementById('messageModal'));
+        window.onload = function() {
+            {% if messages %}
+            messageModal.show();
+            {% endif %}
+        };
+    </script>
+</body>
+</html>

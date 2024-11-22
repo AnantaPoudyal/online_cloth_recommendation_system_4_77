@@ -1,0 +1,181 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sidebar</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Sidebar Styling */
+        .sidebar {
+            background-color: #f8f9fa;
+            padding: 15px;
+            width: 250px;
+            position: fixed;
+            height: 100vh; /* Adjusted for full height sidebar */
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Subtle shadow effect */
+        }
+    
+        .innerSidebar {
+            margin-top: 60px; /* Adjusted for top padding */
+        }
+    
+        /* Dropdown Styling */
+        .dropdown {
+            position: relative;
+            padding: 10px 0;
+            margin-top: 15px;
+        }
+    
+        .dropdown p {
+            cursor: pointer;
+            font-weight: 600;
+            margin: 0;
+            color: #333;
+            padding: 5px;
+            transition: background-color 0.3s ease;
+        }
+    
+        .dropdown p:hover {
+            background-color: #007bff; /* Add hover effect for the dropdown title */
+            color: white;
+        }
+    
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+            width: 100%;
+            padding: 10px;
+            top: 100%;
+            left: 0;
+            border-radius: 5px;
+        }
+    
+        /* Show dropdown on hover */
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+    
+        /* Scrollable Dropdown Content */
+        .scrollable {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    
+        /* Links inside dropdown */
+        .dropdown-content a {
+            text-decoration: none;
+            color: #333;
+            display: block;
+            padding: 8px;
+            transition: background-color 0.3s ease;
+        }
+    
+        /* Hover effect for links */
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+    
+        /* Content area next to sidebar */
+        .content {
+            margin-left: 260px; /* Adjust based on sidebar width */
+            padding: 20px;
+        }
+    
+        /* Responsive design for mobile devices */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+    
+            .content {
+                margin-left: 0; /* Full width for content */
+                padding: 10px;
+            }
+        }
+    
+        @media (max-width: 576px) {
+            .sidebar {
+                width: 180px;
+            }
+    
+            .content {
+                margin-left: 0; /* Full width for content */
+                padding: 5px;
+            }
+        }
+    </style>
+    
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="innerSidebar">
+            <div class="dropdown">
+                <p>Sub Categories</p>
+                <div class="dropdown-content scrollable">
+                    {% for sub in sideBar.sub_categories %}
+                        <a href="{% url 'products_by_subcategory' sub.sub_category_name %}">{{ sub.sub_category_name }}</a>
+                    {% empty %}
+                        <p>No sub-categories available.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <p>Article Types</p>
+                <div class="dropdown-content scrollable">
+                    {% for article in sideBar.article_types %}
+                        <a href="{% url 'products_by_article_type' article.articleType_name %}">{{ article.articleType_name }}</a>
+                    {% empty %}
+                        <p>No article types available.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <p>Base Colours</p>
+                <div class="dropdown-content scrollable">
+                    {% for colour in sideBar.base_colours %}
+                        <a href="{% url 'products_by_base_colour' colour.baseColour_name %}">{{ colour.baseColour_name }}</a>
+                    {% empty %}
+                        <p>No base colours available.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <p>Seasons</p>
+                <div class="dropdown-content scrollable">
+                    {% for season in sideBar.seasons %}
+                        <a href="{% url 'products_by_season' season.season_name %}">{{ season.season_name }}</a>
+                    {% empty %}
+                        <p>No seasons available.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <p>Genders</p>
+                <div class="dropdown-content scrollable">
+                    {% for gender in sideBar.genders %}
+                        <a href="{% url 'products_by_gender' gender.gender_name %}">{{ gender.gender_name }}</a>
+                    {% empty %}
+                        <p>No genders available.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="content">
+        <!-- Your main content goes here -->
+    </div>
+
+</body>
+</html>

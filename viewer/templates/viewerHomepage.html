@@ -1,0 +1,31 @@
+
+{%load static%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+
+    <!-- Include Navigation Bar -->
+    {% include 'navbar.html' %}
+    {% include 'sidebar.html' %}
+
+
+    {% comment %} <div class="container mt-5">
+        <h1>Welcome to Our Clothing Store</h1>
+        <p>Discover new fashion, find recommendations, and explore our collection!</p>
+       
+    </div> {% endcomment %}
+
+    {% include 'slider.html' %}
+    {% include 'items.html' %}
+
+    {% include 'footer.html' %}
+    
+
+</body>
+</html>

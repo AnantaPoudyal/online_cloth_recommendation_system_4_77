@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Items</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .container_item {
+      margin:-top:100px;
+      margin-left: 30%;
+      width:50%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container_item mt-4">
+    <h2 class="text-center mb-4">Our Items</h2>
+  
+    <div class="row">
+      {% for item in items %}
+      <div class="col-lg-4 col-md-6 mb-4"> <!-- Adjusted column class to display 3 items per row -->
+        <div class="card">
+          <img src="{% static 'images/' %}{{ item.filename }}" class="card-img-top" alt="{{ item.productDisplayName }}">
+          <div class="card-body">
+            <a href="{% url 'itemDetail' item.id %}">
+              <h5 class="card-title">{{ item.productDisplayName }}</h5>
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

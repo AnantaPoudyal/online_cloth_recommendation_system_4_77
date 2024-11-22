@@ -1,0 +1,154 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Items</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 0px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            color: #343a40;
+        }
+        .item-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .item {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            margin: 10px;
+            padding: 20px;
+            text-align: center;
+            width: 200px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        .item img {
+            width: 100%;
+            height: auto;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 15px;
+            border-radius: 0.25rem;
+        }
+        .item p {
+            font-size: 1rem;
+            color: #495057;
+            margin: 0;
+        }
+        .item p a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .item p a:hover {
+            text-decoration: underline;
+        }
+        .search-form {
+            margin-bottom: 20px;
+        }
+        .no-items-message {
+            text-align: center;
+            font-size: 1.25rem;
+            color: #dc3545;
+            margin-top: 30px;
+        }
+        .pagination {
+            justify-content: center;
+        }   
+        .containers {
+            border: 0px solid red;
+            margin-left: 18%;
+            margin-top: 20px;
+            width: 80%;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Include Navigation Bar -->
+    {% include 'navbar.html' %}
+    {% include 'sidebar.html' %}
+
+    <div class="containers">
+        <div class="search-form">
+            <!-- Search form code can go here -->
+        </div>
+
+        <div class="item-list">
+            {% for item in content.items %}
+            <div class="item">
+                <img src="{% static 'images/' %}{{ item.filename }}" alt="{{ item.productDisplayName }}">
+                <p><a href="{% url 'itemDetail' item.id %}">{{ item.productDisplayName }}</a></p>
+            </div>
+            {% empty %}
+            <p class="no-items-message">No items found.</p>
+            {% endfor %}
+        </div>
+
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <!-- First and Previous buttons -->
+                {% if content.items.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1&search={{ request.GET.search }}" aria-label="First">&laquo;&laquo;</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ content.items.previous_page_number }}&search={{ request.GET.search }}" aria-label="Previous">&laquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="First">&laquo;&laquo;</a>
+                    </li>
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Previous">&laquo;</a>
+                    </li>
+                {% endif %}
+        
+                <!-- Page number buttons -->
+                {% for num in content.items.paginator.page_range %}
+                    {% if num >= content.items.number|add:'-2' and num <= content.items.number|add:'2' %}
+                        {% if content.items.number == num %}
+                            <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                        {% else %}
+                            <li class="page-item"><a class="page-link" href="?page={{ num }}&search={{ request.GET.search }}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+        
+                <!-- Next and Last buttons -->
+                {% if content.items.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ content.items.next_page_number }}&search={{ request.GET.search }}" aria-label="Next">&raquo;</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ content.items.paginator.num_pages }}&search={{ request.GET.search }}" aria-label="Last">&raquo;&raquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Next">&raquo;</a>
+                    </li>
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Last">&raquo;&raquo;</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        
+    </div>
+    
+</body>
+</html>
