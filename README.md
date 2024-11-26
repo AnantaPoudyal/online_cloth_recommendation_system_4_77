@@ -3,14 +3,14 @@ Online Cloth Recommendation System 4.77
 Requirements
 To run this website, you will need to install the following:
 
-Django
-MySQL, mysql-connector, and mysqlclient
-NumPy
-Pandas
-Pillow
-Scikit-learn
-TensorFlow
-Jet
+Django,
+MySQL, mysql-connector, and mysqlclient,
+NumPy,
+Pandas,
+Pillow,
+Scikit-learn,
+TensorFlow,
+Jet,
 Additionally, you need to install XAMPP to manage the database server.
 
 Database Setup
