@@ -88,7 +88,7 @@ def create_universal_tag(refined_data):
     """Create a 'universal tag' combining key product attributes."""
     refined_data["year"] = refined_data["year"].astype(str)
     refined_data["allCategory"] = refined_data[[
-        "gender_id", "masterCategory_id", "subCategory_id", "articleType_id", "season_id", "baseColour_id",
+        "gender_id", "masterCategory_id", "subCategory_id","baseColour_id", "articleType_id", "season_id", "baseColour_id",
         "year", "usage", "productDisplayName"
     ]].agg(' '.join, axis=1)
 
